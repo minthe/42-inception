@@ -1,0 +1,86 @@
+version: "3"
+
+services:
+  nginx:
+    image: nginx
+    container_name: nginx
+    env_file: .env
+    depends_on:
+      - wordpress
+    build:
+      context: requirements/nginx/
+    hostname: "nginx"
+    restart: unless-stopped
+    ports:
+      - 443:443
+    networks:
+      - network
+    volumes:
+      - ${CERTS_}:/etc/ssl/
+      - wp:/var/www/wordpress
+
+  mariadb:
+    image: mariadb
+    container_name: mariadb
+    env_file: .env
+    build:
+      context: requirements/mariadb
+      args:
+        MYSQL_DATABASE: ${MYSQL_DATABASE}
+        MYSQL_USER: ${MYSQL_USER}
+        MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+        MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    hostname: "mariadb"
+    restart: unless-stopped
+    networks:
+      - network
+    volumes:
+        - db:/var/lib/mysql
+    expose:
+        - "3306"
+
+  wordpress:
+    image: wordpress
+    container_name: wordpress
+    env_file: .env
+    build:
+      context: requirements/wordpress
+      args:
+        MYSQL_USER: ${MYSQL_USER}
+        MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+        MYSQL_DATABASE: ${MYSQL_DATABASE}
+        WP_TITLE: ${WP_TITLE}
+        WP_ADMIN: ${WP_ADMIN}
+        WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD}
+        WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL}
+        WP_GUEST: ${WP_GUEST}
+        WP_GUEST_PASSWORD: ${WP_GUEST_PASSWORD}
+        WP_GUEST_EMAIL: ${WP_GUEST_EMAIL}
+    hostname: "wordpress"
+    restart: unless-stopped
+    networks:
+      - network
+    volumes:
+      - wp:/var/www/wordpress
+    depends_on:
+      - mariadb
+    expose:
+      - "9000"
+
+networks:
+  network:
+    driver: bridge
+
+volumes:
+  db:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ~/data/mariadb
+  wp:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ~/data/wordpress
